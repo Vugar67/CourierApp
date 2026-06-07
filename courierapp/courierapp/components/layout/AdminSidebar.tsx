@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Warehouse, DollarSign, Users, Package, LogOut, ChevronRight, Settings } from 'lucide-react'
+import { LayoutDashboard, Warehouse, DollarSign, Users, Package, LogOut, ChevronRight, Settings, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import type { Profile } from '@/lib/types'
@@ -11,6 +11,7 @@ const navItems = [
   { href: '/admin',            icon: LayoutDashboard, label: 'Главная' },
   { href: '/admin/warehouses', icon: Warehouse,       label: 'Склады' },
   { href: '/admin/tariffs',    icon: DollarSign,      label: 'Тарифы' },
+  { href: '/admin/triggers',   icon: Zap,             label: 'Триггеры' },
   { href: '/admin/users',      icon: Users,           label: 'Пользователи' },
   { href: '/admin/parcels',    icon: Package,         label: 'Посылки' },
   { href: '/admin/settings',   icon: Settings,        label: 'Настройки' },
@@ -49,14 +50,10 @@ export default function AdminSidebar({ profile }: { profile: Profile | null }) {
         {navItems.map(({ href, icon: Icon, label }) => {
           const active = pathname === href || (href !== '/admin' && pathname.startsWith(href))
           return (
-            <Link
-              key={href}
-              href={href}
+            <Link key={href} href={href}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150',
-                active
-                  ? 'bg-brand-600 text-white'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                active ? 'bg-brand-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
               )}
             >
               <Icon size={17} />
@@ -76,17 +73,13 @@ export default function AdminSidebar({ profile }: { profile: Profile | null }) {
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">
-                {profile.first_name} {profile.last_name}
-              </p>
+              <p className="text-sm font-semibold text-white truncate">{profile.first_name} {profile.last_name}</p>
               <p className="text-xs text-gray-500">Admin</p>
             </div>
           </div>
         )}
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:bg-red-900/30 hover:text-red-400 transition-all duration-150"
-        >
+        <button onClick={handleLogout}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:bg-red-900/30 hover:text-red-400 transition-all duration-150">
           <LogOut size={17} />
           Выйти
         </button>
