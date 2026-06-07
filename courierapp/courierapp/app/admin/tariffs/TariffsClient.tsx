@@ -8,14 +8,14 @@ const COUNTRY_ORDER = ['US', 'CA', 'DE', 'ES', 'GB', 'TR', 'CN', 'AZ']
 const COUNTRY_FLAGS: Record<string, string> = { US:'🇺🇸', CA:'🇨🇦', DE:'🇩🇪', GB:'🇬🇧', ES:'🇪🇸', TR:'🇹🇷', CN:'🇨🇳', AZ:'🇦🇿' }
 const COUNTRY_NAMES: Record<string, string> = { US:'США', CA:'Канада', DE:'Германия', GB:'Великобритания', ES:'Испания', TR:'Турция', CN:'Китай', AZ:'Азербайджан' }
 const CURRENCY_SYMBOLS: Record<string, string> = { USD:'$', EUR:'€', GBP:'£', AZN:'₼' }
-const CARGO_CATEGORIES = [
-  { value: 'standard', label: 'Standart' },
-  { value: 'liquid',   label: 'Maye (жидкость)' },
-  { value: 'fragile',  label: 'Qırılgan (хрупкое)' },
-  { value: 'oversized',label: 'Həcmli (негабарит)' },
+const ALL_CATEGORIES = [
+  { value: 'standard',  label: 'Standart',             emoji: '📦' },
+  { value: 'liquid',    label: 'Maye (жидкость)',       emoji: '💧' },
+  { value: 'fragile',   label: 'Qırılgan (хрупкое)',    emoji: '🫙' },
+  { value: 'oversized', label: 'Həcmli (негабарит)',    emoji: '📐' },
 ]
 
-interface Warehouse { id: string; name: string; countries?: { name_ru: string; code: string; id: string } }
+interface Warehouse { id: string; name: string; countries?: { name_ru: string; code: string } }
 interface Trigger { id: string; code: string; name_ru: string; is_active: boolean }
 interface Tariff {
   id: string; warehouse_id: string; name: string; price_per_kg: number
@@ -47,6 +47,7 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [filterCountry, setFilterCountry] = useState('US')
+  const [filterCategory, setFilterCategory] = useState('all')
 
   // Countries sorted by COUNTRY_ORDER
   const countries = useMemo(() => {
@@ -54,8 +55,7 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
     const list = warehouses.filter(w => {
       const code = w.countries?.code
       if (!code || seen.has(code)) return false
-      seen.add(code)
-      return true
+      seen.add(code); return true
     }).map(w => ({ code: w.countries!.code, name: w.countries!.name_ru }))
     return list.sort((a, b) => {
       const ai = COUNTRY_ORDER.indexOf(a.code)
@@ -64,14 +64,29 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
     })
   }, [warehouses])
 
-  // Set default filter to first country
-  const activeCountry = filterCountry || countries[0]?.code || ''
+  // Categories available for selected country
+  const availableCategories = useMemo(() => {
+    const cats = new Set(
+      tariffs
+        .filter(t => t.warehouses?.countries?.code === filterCountry)
+        .map(t => t.cargo_category)
+    )
+    return ALL_CATEGORIES.filter(c => cats.has(c.value))
+  }, [tariffs, filterCountry])
 
+  // Reset category filter when country changes
+  function handleCountryChange(code: string) {
+    setFilterCountry(code)
+    setFilterCategory('all')
+  }
+
+  // Filtered + sorted tariffs
   const filtered = useMemo(() => {
     return tariffs
-      .filter(t => activeCountry ? t.warehouses?.countries?.code === activeCountry : true)
+      .filter(t => t.warehouses?.countries?.code === filterCountry)
+      .filter(t => filterCategory === 'all' || t.cargo_category === filterCategory)
       .sort((a, b) => (a.weight_from ?? 0) - (b.weight_from ?? 0))
-  }, [tariffs, activeCountry])
+  }, [tariffs, filterCountry, filterCategory])
 
   function openCreate() { setEditing(null); setForm(emptyForm); setError(null); setSuccess(false); setShowModal(true) }
 
@@ -143,12 +158,12 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
       </div>
 
       {/* Country tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-5">
+      <div className="flex gap-2 overflow-x-auto pb-1 mb-3">
         {countries.map(c => (
           <button key={c.code}
-            onClick={() => setFilterCountry(c.code)}
+            onClick={() => handleCountryChange(c.code)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all shrink-0 ${
-              activeCountry === c.code
+              filterCountry === c.code
                 ? 'bg-brand-600 text-white shadow-sm'
                 : 'bg-white border border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600'
             }`}
@@ -159,25 +174,55 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
         ))}
       </div>
 
-      <div className="card p-3 mb-5 bg-blue-50 border-blue-100">
+      {/* Category tabs — shown only if more than 1 category exists for this country */}
+      {availableCategories.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+          <button
+            onClick={() => setFilterCategory('all')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
+              filterCategory === 'all'
+                ? 'bg-gray-800 text-white'
+                : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-400'
+            }`}
+          >
+            Все категории
+          </button>
+          {availableCategories.map(c => (
+            <button key={c.value}
+              onClick={() => setFilterCategory(c.value)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
+                filterCategory === c.value
+                  ? 'bg-gray-800 text-white'
+                  : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-400'
+              }`}
+            >
+              <span>{c.emoji}</span>
+              <span>{c.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="card p-3 mb-4 bg-blue-50 border-blue-100">
         <p className="text-xs text-blue-700">
           При наступлении триггера система ищет подходящие тарифы по дате и весу и применяет <strong>минимальный</strong>. После фиксации тариф меняется только вручную.
+          <span className="ml-2 text-blue-500">{filtered.length} тарифов</span>
         </p>
       </div>
 
       {filtered.length === 0 ? (
         <div className="card p-12 text-center">
           <DollarSign size={24} className="text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">Тарифов нет для этой страны</p>
+          <p className="text-gray-500">Тарифов нет</p>
           <button onClick={openCreate} className="btn-primary mt-4 mx-auto"><Plus size={16}/> Добавить</button>
         </div>
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px]">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  {['Название','Категория','Вес (кг)','Тип','Цена','AZN ₼','Расчёт','Триггер','Период','Статус',''].map(h => (
+                  {['Название','Категория','Вес (кг)','Тип цены','Цена','AZN ₼','Расчёт','Триггер','Период','Статус',''].map(h => (
                     <th key={h} className="text-left text-xs font-semibold text-gray-500 px-3 py-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -185,13 +230,17 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
               <tbody>
                 {filtered.map((t, i) => {
                   const sym = CURRENCY_SYMBOLS[t.currency] ?? t.currency
-                  const catLabel = CARGO_CATEGORIES.find(c => c.value === t.cargo_category)?.label ?? t.cargo_category
+                  const cat = ALL_CATEGORIES.find(c => c.value === t.cargo_category)
                   return (
                     <tr key={t.id} className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${i === filtered.length-1 ? 'border-0':''}`}>
                       <td className="px-3 py-2.5 text-sm font-medium text-gray-900">{t.name}</td>
                       <td className="px-3 py-2.5">
-                        <span className={`badge text-xs ${t.cargo_category === 'liquid' ? 'bg-blue-50 text-blue-700' : t.cargo_category === 'fragile' ? 'bg-orange-50 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
-                          {catLabel}
+                        <span className={`badge text-xs ${
+                          t.cargo_category === 'liquid' ? 'bg-blue-50 text-blue-700' :
+                          t.cargo_category === 'fragile' ? 'bg-orange-50 text-orange-700' :
+                          t.cargo_category === 'oversized' ? 'bg-purple-50 text-purple-700' :
+                          'bg-gray-100 text-gray-600'}`}>
+                          {cat?.emoji} {cat?.label ?? t.cargo_category}
                         </span>
                       </td>
                       <td className="px-3 py-2.5 text-sm font-mono text-gray-600 whitespace-nowrap">
@@ -206,12 +255,10 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
                         <span className="text-sm font-bold text-gray-900">{sym}{t.price_per_kg}</span>
                       </td>
                       <td className="px-3 py-2.5 whitespace-nowrap">
-                        {t.price_azn != null
-                          ? <span className="text-sm font-bold text-gray-900">₼{t.price_azn}</span>
-                          : <span className="text-gray-300">—</span>}
+                        {t.price_azn != null ? <span className="text-sm font-bold text-gray-900">₼{t.price_azn}</span> : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-3 py-2.5">
-                        <span className={`badge text-xs ${t.calculation_type === 'progressive' ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                        <span className="badge text-xs bg-gray-100 text-gray-600">
                           {t.calculation_type === 'progressive' ? 'Ступенч.' : 'Единая'}
                         </span>
                       </td>
@@ -256,19 +303,26 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
                 <label className="label">Склад</label>
                 <select name="warehouse_id" value={form.warehouse_id} onChange={handleChange} className="input" required>
                   <option value="">Выберите склад</option>
-                  {warehouses.map(w => <option key={w.id} value={w.id}>{COUNTRY_FLAGS[w.countries?.code ?? ''] ?? ''} {w.name} ({w.countries?.code})</option>)}
+                  {[...warehouses].sort((a, b) => {
+                    const ai = COUNTRY_ORDER.indexOf(a.countries?.code ?? '')
+                    const bi = COUNTRY_ORDER.indexOf(b.countries?.code ?? '')
+                    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+                  }).map(w => (
+                    <option key={w.id} value={w.id}>
+                      {COUNTRY_FLAGS[w.countries?.code ?? ''] ?? ''} {w.name} ({w.countries?.code})
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Название тарифа</label>
-                  <input name="name" type="text" className="input" placeholder="Standart"
-                    value={form.name} onChange={handleChange} required />
+                  <input name="name" type="text" className="input" placeholder="Standart" value={form.name} onChange={handleChange} required />
                 </div>
                 <div>
                   <label className="label">Категория груза</label>
                   <select name="cargo_category" value={form.cargo_category} onChange={handleChange} className="input">
-                    {CARGO_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    {ALL_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>)}
                   </select>
                 </div>
               </div>
@@ -325,14 +379,8 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">Объёмный делитель</label>
-                  <input name="volumetric_divisor" type="number" min="1" className="input" placeholder="5000" value={form.volumetric_divisor} onChange={handleChange} required />
-                </div>
-                <div>
-                  <label className="label">Минимальная сумма</label>
-                  <input name="min_charge" type="number" step="0.001" min="0" className="input" placeholder="0" value={form.min_charge} onChange={handleChange} required />
-                </div>
+                <div><label className="label">Объёмный делитель</label><input name="volumetric_divisor" type="number" min="1" className="input" placeholder="5000" value={form.volumetric_divisor} onChange={handleChange} required /></div>
+                <div><label className="label">Минимальная сумма</label><input name="min_charge" type="number" step="0.001" min="0" className="input" placeholder="0" value={form.min_charge} onChange={handleChange} required /></div>
               </div>
               <div>
                 <label className="label">Событие-триггер</label>
