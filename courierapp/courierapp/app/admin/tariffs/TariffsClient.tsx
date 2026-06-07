@@ -1,8 +1,19 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus, Pencil, Trash2, DollarSign, X, Loader2, CheckCircle2, Filter } from 'lucide-react'
+import { Plus, Pencil, Trash2, DollarSign, X, Loader2, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+
+const COUNTRY_ORDER = ['US', 'CA', 'DE', 'ES', 'GB', 'TR', 'CN', 'AZ']
+const COUNTRY_FLAGS: Record<string, string> = { US:'🇺🇸', CA:'🇨🇦', DE:'🇩🇪', GB:'🇬🇧', ES:'🇪🇸', TR:'🇹🇷', CN:'🇨🇳', AZ:'🇦🇿' }
+const COUNTRY_NAMES: Record<string, string> = { US:'США', CA:'Канада', DE:'Германия', GB:'Великобритания', ES:'Испания', TR:'Турция', CN:'Китай', AZ:'Азербайджан' }
+const CURRENCY_SYMBOLS: Record<string, string> = { USD:'$', EUR:'€', GBP:'£', AZN:'₼' }
+const CARGO_CATEGORIES = [
+  { value: 'standard', label: 'Standart' },
+  { value: 'liquid',   label: 'Maye (жидкость)' },
+  { value: 'fragile',  label: 'Qırılgan (хрупкое)' },
+  { value: 'oversized',label: 'Həcmli (негабарит)' },
+]
 
 interface Warehouse { id: string; name: string; countries?: { name_ru: string; code: string; id: string } }
 interface Trigger { id: string; code: string; name_ru: string; is_active: boolean }
@@ -14,17 +25,6 @@ interface Tariff {
   price_type: string; price_azn: number | null; cargo_category: string
   warehouses?: { name: string; countries?: { name_ru: string; code: string } }
   tariff_triggers?: { name_ru: string; code: string }
-}
-
-const CARGO_CATEGORIES = [
-  { value: 'standard', label: 'Standart' },
-  { value: 'liquid',   label: 'Maye (жидкость)' },
-  { value: 'fragile',  label: 'Qırılgan (хрупкое)' },
-  { value: 'oversized',label: 'Həcmli (негабарит)' },
-]
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: '$', EUR: '€', GBP: '£', AZN: '₼'
 }
 
 const emptyForm = {
@@ -46,31 +46,32 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [filterCountry, setFilterCountry] = useState('')
+  const [filterCountry, setFilterCountry] = useState('US')
 
-  // Unique countries from warehouses
+  // Countries sorted by COUNTRY_ORDER
   const countries = useMemo(() => {
     const seen = new Set()
-    return warehouses.filter(w => {
+    const list = warehouses.filter(w => {
       const code = w.countries?.code
       if (!code || seen.has(code)) return false
       seen.add(code)
       return true
     }).map(w => ({ code: w.countries!.code, name: w.countries!.name_ru }))
+    return list.sort((a, b) => {
+      const ai = COUNTRY_ORDER.indexOf(a.code)
+      const bi = COUNTRY_ORDER.indexOf(b.code)
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+    })
   }, [warehouses])
 
-  // Filtered + sorted tariffs
+  // Set default filter to first country
+  const activeCountry = filterCountry || countries[0]?.code || ''
+
   const filtered = useMemo(() => {
-    let list = [...tariffs]
-    if (filterCountry) {
-      list = list.filter(t => t.warehouses?.countries?.code === filterCountry)
-    }
-    return list.sort((a, b) => {
-      const warehouseCompare = (a.warehouses?.name ?? '').localeCompare(b.warehouses?.name ?? '')
-      if (warehouseCompare !== 0) return warehouseCompare
-      return (a.weight_from ?? 0) - (b.weight_from ?? 0)
-    })
-  }, [tariffs, filterCountry])
+    return tariffs
+      .filter(t => activeCountry ? t.warehouses?.countries?.code === activeCountry : true)
+      .sort((a, b) => (a.weight_from ?? 0) - (b.weight_from ?? 0))
+  }, [tariffs, activeCountry])
 
   function openCreate() { setEditing(null); setForm(emptyForm); setError(null); setSuccess(false); setShowModal(true) }
 
@@ -141,47 +142,42 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
         <button onClick={openCreate} className="btn-primary"><Plus size={16} /> Добавить тариф</button>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex items-center gap-3 mb-5">
-        <Filter size={16} className="text-gray-400 shrink-0" />
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setFilterCountry('')}
-            className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${!filterCountry ? 'bg-brand-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-brand-300'}`}
+      {/* Country tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-5">
+        {countries.map(c => (
+          <button key={c.code}
+            onClick={() => setFilterCountry(c.code)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all shrink-0 ${
+              activeCountry === c.code
+                ? 'bg-brand-600 text-white shadow-sm'
+                : 'bg-white border border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600'
+            }`}
           >
-            Все страны
+            <span>{COUNTRY_FLAGS[c.code] ?? '🌍'}</span>
+            <span>{COUNTRY_NAMES[c.code] ?? c.name}</span>
           </button>
-          {countries.map(c => (
-            <button key={c.code}
-              onClick={() => setFilterCountry(c.code)}
-              className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${filterCountry === c.code ? 'bg-brand-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-brand-300'}`}
-            >
-              {c.name}
-            </button>
-          ))}
-        </div>
-        <span className="text-xs text-gray-400 ml-auto">{filtered.length} тарифов</span>
+        ))}
       </div>
 
-      <div className="card p-4 mb-5 bg-blue-50 border-blue-100">
+      <div className="card p-3 mb-5 bg-blue-50 border-blue-100">
         <p className="text-xs text-blue-700">
-          При наступлении триггера система ищет подходящие тарифы по дате и весу и применяет <strong>минимальный</strong>. После фиксации тариф меняется только вручную администратором.
+          При наступлении триггера система ищет подходящие тарифы по дате и весу и применяет <strong>минимальный</strong>. После фиксации тариф меняется только вручную.
         </p>
       </div>
 
       {filtered.length === 0 ? (
         <div className="card p-12 text-center">
           <DollarSign size={24} className="text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">Тарифов нет</p>
+          <p className="text-gray-500">Тарифов нет для этой страны</p>
           <button onClick={openCreate} className="btn-primary mt-4 mx-auto"><Plus size={16}/> Добавить</button>
         </div>
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
+            <table className="w-full min-w-[900px]">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  {['Склад / Страна','Название','Категория','Вес (кг)','Тип','Цена','AZN ₼','Расчёт','Триггер','Период','Статус',''].map(h => (
+                  {['Название','Категория','Вес (кг)','Тип','Цена','AZN ₼','Расчёт','Триггер','Период','Статус',''].map(h => (
                     <th key={h} className="text-left text-xs font-semibold text-gray-500 px-3 py-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -192,11 +188,7 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
                   const catLabel = CARGO_CATEGORIES.find(c => c.value === t.cargo_category)?.label ?? t.cargo_category
                   return (
                     <tr key={t.id} className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${i === filtered.length-1 ? 'border-0':''}`}>
-                      <td className="px-3 py-2.5">
-                        <p className="text-sm font-medium text-gray-900">{t.warehouses?.name}</p>
-                        <p className="text-xs text-gray-400">{t.warehouses?.countries?.name_ru}</p>
-                      </td>
-                      <td className="px-3 py-2.5 text-sm text-gray-700 font-medium">{t.name}</td>
+                      <td className="px-3 py-2.5 text-sm font-medium text-gray-900">{t.name}</td>
                       <td className="px-3 py-2.5">
                         <span className={`badge text-xs ${t.cargo_category === 'liquid' ? 'bg-blue-50 text-blue-700' : t.cargo_category === 'fragile' ? 'bg-orange-50 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
                           {catLabel}
@@ -229,7 +221,7 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
                           : <span className="text-gray-300 text-xs">—</span>}
                       </td>
                       <td className="px-3 py-2.5 text-xs text-gray-400 font-mono whitespace-nowrap">
-                        {t.date_from ? t.date_from : '—'}<br/>{t.date_to ? t.date_to : '—'}
+                        {t.date_from ?? '—'}<br/>{t.date_to ?? '—'}
                       </td>
                       <td className="px-3 py-2.5">
                         <span className={`badge ${t.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -260,15 +252,13 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
               <button onClick={() => setShowModal(false)} className="btn-ghost p-1.5"><X size={18}/></button>
             </div>
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
-
               <div>
                 <label className="label">Склад</label>
                 <select name="warehouse_id" value={form.warehouse_id} onChange={handleChange} className="input" required>
                   <option value="">Выберите склад</option>
-                  {warehouses.map(w => <option key={w.id} value={w.id}>{w.name} ({w.countries?.code})</option>)}
+                  {warehouses.map(w => <option key={w.id} value={w.id}>{COUNTRY_FLAGS[w.countries?.code ?? ''] ?? ''} {w.name} ({w.countries?.code})</option>)}
                 </select>
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Название тарифа</label>
@@ -282,136 +272,91 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
                   </select>
                 </div>
               </div>
-
               <div>
                 <label className="label">Диапазон веса (кг)</label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <input name="weight_from" type="number" step="0.001" min="0" className="input"
-                      placeholder="0.001" value={form.weight_from} onChange={handleChange} required />
+                    <input name="weight_from" type="number" step="0.001" min="0" className="input" placeholder="0.001" value={form.weight_from} onChange={handleChange} required />
                     <p className="text-xs text-gray-400 mt-1">От (кг)</p>
                   </div>
                   <div>
-                    <input name="weight_to" type="number" step="0.001" min="0" className="input"
-                      placeholder="пусто = ∞" value={form.weight_to} onChange={handleChange} />
+                    <input name="weight_to" type="number" step="0.001" min="0" className="input" placeholder="пусто = ∞" value={form.weight_to} onChange={handleChange} />
                     <p className="text-xs text-gray-400 mt-1">До (кг)</p>
                   </div>
                 </div>
               </div>
-
               <div>
                 <label className="label">Тип цены</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: 'fixed', label: 'Фиксированная', desc: 'За весь диапазон' },
-                    { value: 'per_kg', label: 'За каждый кг', desc: 'Цена × вес' },
-                  ].map(opt => (
+                  {[{ value: 'fixed', label: 'Фиксированная', desc: 'За весь диапазон' }, { value: 'per_kg', label: 'За каждый кг', desc: 'Цена × вес' }].map(opt => (
                     <label key={opt.value} className="flex items-start gap-2 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50">
-                      <input type="radio" name="price_type" value={opt.value}
-                        checked={form.price_type === opt.value} onChange={handleChange}
-                        className="mt-0.5 accent-blue-600" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{opt.label}</p>
-                        <p className="text-xs text-gray-400">{opt.desc}</p>
-                      </div>
+                      <input type="radio" name="price_type" value={opt.value} checked={form.price_type === opt.value} onChange={handleChange} className="mt-0.5 accent-blue-600" />
+                      <div><p className="text-sm font-medium text-gray-900">{opt.label}</p><p className="text-xs text-gray-400">{opt.desc}</p></div>
                     </label>
                   ))}
                 </div>
               </div>
-
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="label">Цена</label>
-                  <input name="price_per_kg" type="number" step="0.001" min="0" className="input"
-                    placeholder="5.750" value={form.price_per_kg} onChange={handleChange} required />
+                  <input name="price_per_kg" type="number" step="0.001" min="0" className="input" placeholder="5.750" value={form.price_per_kg} onChange={handleChange} required />
                 </div>
                 <div>
                   <label className="label">Валюта</label>
                   <select name="currency" value={form.currency} onChange={handleChange} className="input">
-                    <option value="USD">USD $</option>
-                    <option value="EUR">EUR €</option>
-                    <option value="GBP">GBP £</option>
-                    <option value="AZN">AZN ₼</option>
+                    <option value="USD">USD $</option><option value="EUR">EUR €</option>
+                    <option value="GBP">GBP £</option><option value="AZN">AZN ₼</option>
                   </select>
                 </div>
                 <div>
-                  <label className="label">Эквивалент AZN ₼</label>
-                  <input name="price_azn" type="number" step="0.001" min="0" className="input"
-                    placeholder="9.790" value={form.price_azn} onChange={handleChange} />
+                  <label className="label">AZN ₼</label>
+                  <input name="price_azn" type="number" step="0.001" min="0" className="input" placeholder="9.790" value={form.price_azn} onChange={handleChange} />
                 </div>
               </div>
-
               <div>
                 <label className="label">Тип расчёта</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: 'flat', title: 'Единая ставка', desc: '7 кг × $4 = $28' },
-                    { value: 'progressive', title: 'Ступенчатый', desc: '5×$6 + 2×$4 = $38' },
-                  ].map(opt => (
+                  {[{ value: 'flat', title: 'Единая ставка', desc: '7 кг × $4 = $28' }, { value: 'progressive', title: 'Ступенчатый', desc: '5×$6 + 2×$4 = $38' }].map(opt => (
                     <label key={opt.value} className="flex items-start gap-2 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50">
-                      <input type="radio" name="calculation_type" value={opt.value}
-                        checked={form.calculation_type === opt.value} onChange={handleChange}
-                        className="mt-0.5 accent-blue-600" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{opt.title}</p>
-                        <p className="text-xs text-gray-400">{opt.desc}</p>
-                      </div>
+                      <input type="radio" name="calculation_type" value={opt.value} checked={form.calculation_type === opt.value} onChange={handleChange} className="mt-0.5 accent-blue-600" />
+                      <div><p className="text-sm font-medium text-gray-900">{opt.title}</p><p className="text-xs text-gray-400">{opt.desc}</p></div>
                     </label>
                   ))}
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Объёмный делитель</label>
-                  <input name="volumetric_divisor" type="number" min="1" className="input"
-                    placeholder="5000" value={form.volumetric_divisor} onChange={handleChange} required />
+                  <input name="volumetric_divisor" type="number" min="1" className="input" placeholder="5000" value={form.volumetric_divisor} onChange={handleChange} required />
                 </div>
                 <div>
                   <label className="label">Минимальная сумма</label>
-                  <input name="min_charge" type="number" step="0.001" min="0" className="input"
-                    placeholder="0" value={form.min_charge} onChange={handleChange} required />
+                  <input name="min_charge" type="number" step="0.001" min="0" className="input" placeholder="0" value={form.min_charge} onChange={handleChange} required />
                 </div>
               </div>
-
               <div>
                 <label className="label">Событие-триггер</label>
                 <select name="trigger_id" value={form.trigger_id} onChange={handleChange} className="input">
                   <option value="">Без триггера</option>
-                  {triggers.filter(t => t.is_active).map(t => (
-                    <option key={t.id} value={t.id}>{t.name_ru}</option>
-                  ))}
+                  {triggers.filter(t => t.is_active).map(t => <option key={t.id} value={t.id}>{t.name_ru}</option>)}
                 </select>
               </div>
-
               <div>
                 <label className="label">Период действия</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <input name="date_from" type="date" className="input" value={form.date_from} onChange={handleChange} />
-                    <p className="text-xs text-gray-400 mt-1">С</p>
-                  </div>
-                  <div>
-                    <input name="date_to" type="date" className="input" value={form.date_to} onChange={handleChange} />
-                    <p className="text-xs text-gray-400 mt-1">По</p>
-                  </div>
+                  <div><input name="date_from" type="date" className="input" value={form.date_from} onChange={handleChange} /><p className="text-xs text-gray-400 mt-1">С</p></div>
+                  <div><input name="date_to" type="date" className="input" value={form.date_to} onChange={handleChange} /><p className="text-xs text-gray-400 mt-1">По</p></div>
                 </div>
               </div>
-
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" name="is_active" checked={form.is_active}
-                  onChange={handleChange} className="w-4 h-4 rounded accent-blue-600" />
+                <input type="checkbox" name="is_active" checked={form.is_active} onChange={handleChange} className="w-4 h-4 rounded accent-blue-600" />
                 <span className="text-sm font-medium text-gray-700">Активен</span>
               </label>
-
               {error && <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">{error}</div>}
-
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1">Отмена</button>
                 <button type="submit" className="btn-primary flex-1" disabled={loading || success}>
-                  {success ? <><CheckCircle2 size={16}/> Сохранено</> :
-                   loading ? <><Loader2 size={16} className="animate-spin"/> Сохранение...</> :
-                   editing ? 'Сохранить' : 'Создать'}
+                  {success ? <><CheckCircle2 size={16}/> Сохранено</> : loading ? <><Loader2 size={16} className="animate-spin"/> Сохранение...</> : editing ? 'Сохранить' : 'Создать'}
                 </button>
               </div>
             </form>
