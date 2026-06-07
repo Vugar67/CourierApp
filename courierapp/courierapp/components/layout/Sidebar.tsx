@@ -4,18 +4,19 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Package, Wallet, Settings,
-  LogOut, User, ChevronRight, Bell
+  LogOut, User, ChevronRight, MapPin
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import type { Profile } from '@/lib/types'
 
 const navItems = [
-  { href: '/dashboard',         icon: LayoutDashboard, label: 'Главная' },
-  { href: '/dashboard/parcels', icon: Package,          label: 'Посылки' },
-  { href: '/dashboard/finance', icon: Wallet,           label: 'Финансы' },
-  { href: '/dashboard/profile', icon: User,             label: 'Профиль' },
-  { href: '/dashboard/settings',icon: Settings,         label: 'Настройки' },
+  { href: '/dashboard',           icon: LayoutDashboard, label: 'Главная' },
+  { href: '/dashboard/parcels',   icon: Package,          label: 'Посылки' },
+  { href: '/dashboard/addresses', icon: MapPin,           label: 'Адреса складов' },
+  { href: '/dashboard/finance',   icon: Wallet,           label: 'Финансы' },
+  { href: '/dashboard/profile',   icon: User,             label: 'Профиль' },
+  { href: '/dashboard/settings',  icon: Settings,         label: 'Настройки' },
 ]
 
 export default function Sidebar({ profile }: { profile: Profile | null }) {
@@ -31,7 +32,6 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
 
   return (
     <aside className="w-60 h-full bg-white border-r border-surface-200 flex flex-col shrink-0">
-      {/* Logo */}
       <div className="p-5 border-b border-surface-100">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center shadow-sm">
@@ -41,23 +41,20 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
               <circle cx="12" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
             </svg>
           </div>
-          <span className="font-bold text-text text-base tracking-tight">CourierApp</span>
+          <span className="font-bold text-gray-900 text-base tracking-tight">CourierApp</span>
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 p-3 space-y-0.5">
         {navItems.map(({ href, icon: Icon, label }) => {
           const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
           return (
-            <Link
-              key={href}
-              href={href}
+            <Link key={href} href={href}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150',
                 active
                   ? 'bg-brand-50 text-brand-700'
-                  : 'text-text-muted hover:bg-surface-50 hover:text-text'
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
               )}
             >
               <Icon size={17} />
@@ -68,7 +65,6 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
         })}
       </nav>
 
-      {/* User */}
       <div className="p-3 border-t border-surface-100">
         {profile && (
           <div className="flex items-center gap-2.5 px-3 py-2.5 mb-1">
@@ -78,19 +74,17 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-text truncate">
+              <p className="text-sm font-semibold text-gray-900 truncate">
                 {profile.first_name} {profile.last_name}
               </p>
               {profile.personal_code && (
-                <p className="text-xs font-mono text-text-muted">{profile.personal_code}</p>
+                <p className="text-xs font-mono text-gray-400">{profile.personal_code}</p>
               )}
             </div>
           </div>
         )}
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-text-muted hover:bg-red-50 hover:text-red-600 transition-all duration-150"
-        >
+        <button onClick={handleLogout}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all duration-150">
           <LogOut size={17} />
           Выйти
         </button>
