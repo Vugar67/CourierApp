@@ -19,6 +19,9 @@ interface Tariff {
   min_charge: number
   currency: string
   is_active: boolean
+  weight_from: number
+  weight_to: number | null
+  calculation_type: string
   warehouses?: { name: string; countries?: { name_ru: string; code: string } }
 }
 
@@ -30,6 +33,9 @@ const emptyForm = {
   min_charge: '0',
   currency: 'USD',
   is_active: true,
+  weight_from: '0',
+  weight_to: '',
+  calculation_type: 'flat',
 }
 
 export default function TariffsClient({
@@ -66,6 +72,9 @@ export default function TariffsClient({
       min_charge:         String(t.min_charge),
       currency:           t.currency,
       is_active:          t.is_active,
+      weight_from:        String(t.weight_from ?? 0),
+      weight_to:          t.weight_to != null ? String(t.weight_to) : '',
+      calculation_type:   t.calculation_type ?? 'flat',
     })
     setError(null)
     setSuccess(false)
@@ -93,6 +102,9 @@ export default function TariffsClient({
       min_charge:         parseFloat(form.min_charge),
       currency:           form.currency,
       is_active:          form.is_active,
+      weight_from:        parseFloat(form.weight_from) || 0,
+      weight_to:          form.weight_to ? parseFloat(form.weight_to) : null,
+      calculation_type:   form.calculation_type,
     }
 
     if (editing) {
@@ -131,7 +143,6 @@ export default function TariffsClient({
         </button>
       </div>
 
-      {/* Formula hint */}
       <div className="card p-4 mb-6 bg-blue-50 border-blue-100">
         <p className="text-sm text-blue-800 font-medium mb-1">Формула расчёта</p>
         <p className="text-xs text-blue-700 font-mono">
@@ -159,7 +170,8 @@ export default function TariffsClient({
                 <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">Склад</th>
                 <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">Название</th>
                 <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3">Цена/кг</th>
-                <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3">Делитель</th>
+                <th className="text-center text-xs font-semibold text-gray-500 px-4 py-3">Диапазон (кг)</th>
+                <th className="text-center text-xs font-semibold text-gray-500 px-4 py-3">Расчёт</th>
                 <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3">Мин. сумма</th>
                 <th className="text-center text-xs font-semibold text-gray-500 px-4 py-3">Статус</th>
                 <th className="px-4 py-3"></th>
@@ -179,7 +191,14 @@ export default function TariffsClient({
                     <span className="text-sm font-semibold text-gray-900">{t.price_per_kg}</span>
                     <span className="text-xs text-gray-400 ml-1">{t.currency}</span>
                   </td>
-                  <td className="px-4 py-3 text-right text-sm text-gray-600 font-mono">{t.volumetric_divisor}</td>
+                  <td className="px-4 py-3 text-center text-sm text-gray-600 font-mono">
+                    {t.weight_from ?? 0} — {t.weight_to != null ? t.weight_to : '∞'}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`badge ${t.calculation_type === 'progressive' ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {t.calculation_type === 'progressive' ? 'Ступенчато' : 'Единая ставка'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-right text-sm text-gray-600">{t.min_charge} {t.currency}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`badge ${t.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -188,12 +207,8 @@ export default function TariffsClient({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
-                      <button onClick={() => openEdit(t)} className="btn-ghost p-1.5">
-                        <Pencil size={14} />
-                      </button>
-                      <button onClick={() => handleDelete(t.id)} className="btn-ghost p-1.5 hover:text-red-600 hover:bg-red-50">
-                        <Trash2 size={14} />
-                      </button>
+                      <button onClick={() => openEdit(t)} className="btn-ghost p-1.5"><Pencil size={14} /></button>
+                      <button onClick={() => handleDelete(t.id)} className="btn-ghost p-1.5 hover:text-red-600 hover:bg-red-50"><Trash2 size={14} /></button>
                     </div>
                   </td>
                 </tr>
@@ -203,10 +218,9 @@ export default function TariffsClient({
         </div>
       )}
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-card-lg w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-card-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <h2 className="font-bold text-gray-900">{editing ? 'Редактировать тариф' : 'Новый тариф'}</h2>
               <button onClick={() => setShowModal(false)} className="btn-ghost p-1.5"><X size={18} /></button>
@@ -218,24 +232,64 @@ export default function TariffsClient({
                 <select name="warehouse_id" value={form.warehouse_id} onChange={handleChange} className="input" required>
                   <option value="">Выберите склад</option>
                   {warehouses.map(w => (
-                    <option key={w.id} value={w.id}>
-                      {w.name} ({w.countries?.code})
-                    </option>
+                    <option key={w.id} value={w.id}>{w.name} ({w.countries?.code})</option>
                   ))}
                 </select>
               </div>
 
               <div>
                 <label className="label">Название тарифа</label>
-                <input name="name" type="text" className="input" placeholder="Стандарт"
+                <input name="name" type="text" className="input" placeholder="Стандарт 0–5 кг"
                   value={form.name} onChange={handleChange} required />
+              </div>
+
+              {/* Weight range */}
+              <div>
+                <label className="label">Диапазон веса (кг)</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <input name="weight_from" type="number" step="0.001" min="0" className="input"
+                      placeholder="От (напр. 0)" value={form.weight_from} onChange={handleChange} required />
+                    <p className="text-xs text-gray-400 mt-1">От (кг)</p>
+                  </div>
+                  <div>
+                    <input name="weight_to" type="number" step="0.001" min="0" className="input"
+                      placeholder="До (пусто = ∞)" value={form.weight_to} onChange={handleChange} />
+                    <p className="text-xs text-gray-400 mt-1">До (кг), пусто = без ограничения</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Calculation type */}
+              <div>
+                <label className="label">Тип расчёта</label>
+                <div className="space-y-2">
+                  <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input type="radio" name="calculation_type" value="flat"
+                      checked={form.calculation_type === 'flat'} onChange={handleChange}
+                      className="mt-0.5 accent-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Единая ставка</p>
+                      <p className="text-xs text-gray-500">Весь вес × цена за кг (напр. 7 кг × $4 = $28)</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input type="radio" name="calculation_type" value="progressive"
+                      checked={form.calculation_type === 'progressive'} onChange={handleChange}
+                      className="mt-0.5 accent-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Ступенчатый расчёт</p>
+                      <p className="text-xs text-gray-500">Каждый кг по своей ставке (напр. 5×$6 + 2×$4 = $38)</p>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Цена за кг</label>
-                  <input name="price_per_kg" type="number" step="0.01" min="0" className="input"
-                    placeholder="8.00" value={form.price_per_kg} onChange={handleChange} required />
+                  <input name="price_per_kg" type="number" step="0.001" min="0" className="input"
+                    placeholder="8.000" value={form.price_per_kg} onChange={handleChange} required />
                 </div>
                 <div>
                   <label className="label">Валюта</label>
@@ -255,7 +309,7 @@ export default function TariffsClient({
                 </div>
                 <div>
                   <label className="label">Минимальная сумма</label>
-                  <input name="min_charge" type="number" step="0.01" min="0" className="input"
+                  <input name="min_charge" type="number" step="0.001" min="0" className="input"
                     placeholder="0" value={form.min_charge} onChange={handleChange} required />
                 </div>
               </div>
