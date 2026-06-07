@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Warehouse, DollarSign, Users, Package, LogOut, ChevronRight, Settings, Zap } from 'lucide-react'
+import { LayoutDashboard, Warehouse, DollarSign, Users, Package, LogOut, ChevronRight, Settings, Zap, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import type { Profile } from '@/lib/types'
@@ -12,6 +12,7 @@ const navItems = [
   { href: '/admin/warehouses', icon: Warehouse,       label: 'Склады' },
   { href: '/admin/tariffs',    icon: DollarSign,      label: 'Тарифы' },
   { href: '/admin/triggers',   icon: Zap,             label: 'Триггеры' },
+  { href: '/admin/branches',   icon: MapPin,          label: 'Filiallar' },
   { href: '/admin/users',      icon: Users,           label: 'Пользователи' },
   { href: '/admin/parcels',    icon: Package,         label: 'Посылки' },
   { href: '/admin/settings',   icon: Settings,        label: 'Настройки' },
