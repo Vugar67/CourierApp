@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { Copy, Check, MapPin } from 'lucide-react'
 
+const COUNTRY_ORDER = ['US', 'CA', 'DE', 'ES', 'GB', 'TR', 'CN', 'AZ']
+
 const COUNTRY_FLAGS: Record<string, string> = {
   US: '🇺🇸', CA: '🇨🇦', DE: '🇩🇪', GB: '🇬🇧',
   ES: '🇪🇸', TR: '🇹🇷', CN: '🇨🇳', AZ: '🇦🇿',
@@ -71,7 +73,12 @@ export default function AddressesClient({
 }) {
   const [activeTab, setActiveTab] = useState(warehouses[0]?.id ?? '')
 
-  const activeWarehouse = warehouses.find(w => w.id === activeTab)
+  const sortedWarehouses = [...warehouses].sort((a, b) => {
+    const ai = COUNTRY_ORDER.indexOf(a.countries?.code ?? '')
+    const bi = COUNTRY_ORDER.indexOf(b.countries?.code ?? '')
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+  })
+  const activeWarehouse = sortedWarehouses.find(w => w.id === activeTab) ?? warehouses.find(w => w.id === activeTab)
   const countryCode = activeWarehouse?.countries?.code ?? ''
 
   // Build full name with personal code
@@ -142,7 +149,7 @@ export default function AddressesClient({
 
       {/* Country tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
-        {warehouses.map(w => {
+        {sortedWarehouses.map(w => {
           const code = w.countries?.code ?? ''
           const isActive = w.id === activeTab
           return (
