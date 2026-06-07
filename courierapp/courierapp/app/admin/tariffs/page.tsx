@@ -4,7 +4,7 @@ import TariffsClient from './TariffsClient'
 export default async function TariffsPage() {
   const supabase = createClient()
 
-  const [{ data: tariffs }, { data: warehouses }] = await Promise.all([
+  const [{ data: tariffs }, { data: warehousesRaw }] = await Promise.all([
     supabase
       .from('tariffs')
       .select('*, warehouses(name, countries(name_ru, code))')
@@ -17,5 +17,11 @@ export default async function TariffsPage() {
       .order('name'),
   ])
 
-  return <TariffsClient tariffs={tariffs ?? []} warehouses={warehouses ?? []} />
+  const warehouses = (warehousesRaw ?? []).map((w: any) => ({
+    id: w.id,
+    name: w.name,
+    countries: Array.isArray(w.countries) ? w.countries[0] : w.countries,
+  }))
+
+  return <TariffsClient tariffs={tariffs ?? []} warehouses={warehouses} />
 }
