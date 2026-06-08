@@ -148,7 +148,7 @@ export default function AddressesClient({
       )}
 
       {/* Country tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-5 sticky top-0 z-10 bg-white pt-2 -mx-6 px-6">
         {sortedWarehouses.map(w => {
           const code = w.countries?.code ?? ''
           const isActive = w.id === activeTab
@@ -162,7 +162,7 @@ export default function AddressesClient({
                   : 'bg-white border border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600'
               }`}
             >
-              <span>{COUNTRY_FLAGS[code] ?? '🌍'}</span>
+              <span style={{fontFamily:"Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif"}}>{COUNTRY_FLAGS[code] ?? '🌍'}</span>
               <span>{COUNTRY_NAMES[code] ?? w.countries?.name_az ?? code}</span>
             </button>
           )
