@@ -158,7 +158,7 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
       </div>
 
       {/* Country tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 mb-3">
+      <div className="flex gap-2 overflow-x-auto pb-1 mb-3 sticky top-0 z-10 bg-gray-50 pt-2 -mx-6 px-6">
         {countries.map(c => (
           <button key={c.code}
             onClick={() => handleCountryChange(c.code)}
@@ -168,7 +168,7 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
                 : 'bg-white border border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600'
             }`}
           >
-            <span>{COUNTRY_FLAGS[c.code] ?? '🌍'}</span>
+            <span style={{fontFamily:"Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif"}}>{COUNTRY_FLAGS[c.code] ?? '🌍'}</span>
             <span>{COUNTRY_NAMES[c.code] ?? c.name}</span>
           </button>
         ))}
@@ -176,7 +176,7 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
 
       {/* Category tabs — shown only if more than 1 category exists for this country */}
       {availableCategories.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 sticky top-12 z-10 bg-gray-50 -mx-6 px-6">
           <button
             onClick={() => setFilterCategory('all')}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
