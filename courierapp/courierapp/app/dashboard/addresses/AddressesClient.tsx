@@ -5,10 +5,6 @@ import { Copy, Check, MapPin } from 'lucide-react'
 
 const COUNTRY_ORDER = ['US', 'CA', 'DE', 'ES', 'GB', 'TR', 'CN', 'AZ']
 
-const COUNTRY_FLAGS: Record<string, string> = {
-  US: '🇺🇸', CA: '🇨🇦', DE: '🇩🇪', GB: '🇬🇧',
-  ES: '🇪🇸', TR: '🇹🇷', CN: '🇨🇳', AZ: '🇦🇿',
-}
 
 const COUNTRY_NAMES: Record<string, string> = {
   US: 'ABŞ', CA: 'Kanada', DE: 'Almaniya',
@@ -162,7 +158,7 @@ export default function AddressesClient({
                   : 'bg-white border border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600'
               }`}
             >
-              <span style={{fontFamily:"Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif"}}>{COUNTRY_FLAGS[code] ?? '🌍'}</span>
+              <img src={`https://flagcdn.com/20x15/${code.toLowerCase()}.png`} width="20" height="15" alt={code} className="rounded-sm" />
               <span>{COUNTRY_NAMES[code] ?? w.countries?.name_az ?? code}</span>
             </button>
           )
