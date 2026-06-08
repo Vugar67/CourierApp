@@ -5,7 +5,6 @@ import { Plus, Pencil, Trash2, DollarSign, X, Loader2, CheckCircle2 } from 'luci
 import { createClient } from '@/lib/supabase/client'
 
 const COUNTRY_ORDER = ['US', 'CA', 'DE', 'ES', 'GB', 'TR', 'CN', 'AZ']
-const COUNTRY_FLAGS: Record<string, string> = { US:'🇺🇸', CA:'🇨🇦', DE:'🇩🇪', GB:'🇬🇧', ES:'🇪🇸', TR:'🇹🇷', CN:'🇨🇳', AZ:'🇦🇿' }
 const COUNTRY_NAMES: Record<string, string> = { US:'США', CA:'Канада', DE:'Германия', GB:'Великобритания', ES:'Испания', TR:'Турция', CN:'Китай', AZ:'Азербайджан' }
 const CURRENCY_SYMBOLS: Record<string, string> = { USD:'$', EUR:'€', GBP:'£', AZN:'₼' }
 const ALL_CATEGORIES = [
@@ -168,7 +167,7 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
                 : 'bg-white border border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600'
             }`}
           >
-            <span style={{fontFamily:"Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif"}}>{COUNTRY_FLAGS[c.code] ?? '🌍'}</span>
+            <img src={`https://flagcdn.com/20x15/${c.code.toLowerCase()}.png`} width="20" height="15" alt={c.code} className="rounded-sm" />
             <span>{COUNTRY_NAMES[c.code] ?? c.name}</span>
           </button>
         ))}
@@ -309,7 +308,7 @@ export default function TariffsClient({ tariffs: initial, warehouses, triggers }
                     return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
                   }).map(w => (
                     <option key={w.id} value={w.id}>
-                      {COUNTRY_FLAGS[w.countries?.code ?? ''] ?? ''} {w.name} ({w.countries?.code})
+                      {w.name} ({w.countries?.code})
                     </option>
                   ))}
                 </select>
