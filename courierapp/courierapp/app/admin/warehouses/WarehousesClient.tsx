@@ -5,7 +5,6 @@ import { Plus, Pencil, Trash2, Warehouse, X, Loader2, CheckCircle2 } from 'lucid
 import { createClient } from '@/lib/supabase/client'
 
 const COUNTRY_ORDER = ['US', 'CA', 'DE', 'ES', 'GB', 'TR', 'CN', 'AZ']
-const COUNTRY_FLAGS: Record<string, string> = { US:'🇺🇸', CA:'🇨🇦', DE:'🇩🇪', GB:'🇬🇧', ES:'🇪🇸', TR:'🇹🇷', CN:'🇨🇳', AZ:'🇦🇿' }
 const COUNTRY_NAMES: Record<string, string> = { US:'США', CA:'Канада', DE:'Германия', GB:'Великобритания', ES:'Испания', TR:'Турция', CN:'Китай', AZ:'Азербайджан' }
 
 interface Country { id: string; code: string; name_ru: string }
@@ -104,7 +103,7 @@ export default function WarehousesClient({ warehouses: initial, countries }: {
                 : 'bg-white border border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600'
             }`}
           >
-            <span style={{fontFamily:"Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif"}}>{COUNTRY_FLAGS[c.code] ?? '🌍'}</span>
+            <img src={`https://flagcdn.com/20x15/${c.code.toLowerCase()}.png`} width="20" height="15" alt={c.code} className="rounded-sm" />
             <span>{c.name}</span>
           </button>
         ))}
@@ -162,7 +161,7 @@ export default function WarehousesClient({ warehouses: initial, countries }: {
                   {COUNTRY_ORDER.map(code => {
                     const c = countries.find(x => x.code === code)
                     if (!c) return null
-                    return <option key={c.id} value={c.id}>{COUNTRY_FLAGS[code] ?? ''} {COUNTRY_NAMES[code] ?? c.name_ru} ({code})</option>
+                    return <option key={c.id} value={c.id}>{COUNTRY_NAMES[code] ?? c.name_ru} ({code})</option>
                   })}
                 </select>
               </div>
