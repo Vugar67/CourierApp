@@ -94,7 +94,7 @@ export default function WarehousesClient({ warehouses: initial, countries }: {
       </div>
 
       {/* Country tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-5">
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-5 sticky top-0 z-10 bg-gray-50 pt-2 -mx-6 px-6">
         {availableCountries.map(c => (
           <button key={c.code}
             onClick={() => setFilterCountry(c.code)}
@@ -104,7 +104,7 @@ export default function WarehousesClient({ warehouses: initial, countries }: {
                 : 'bg-white border border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600'
             }`}
           >
-            <span>{COUNTRY_FLAGS[c.code] ?? '🌍'}</span>
+            <span style={{fontFamily:"Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif"}}>{COUNTRY_FLAGS[c.code] ?? '🌍'}</span>
             <span>{c.name}</span>
           </button>
         ))}
